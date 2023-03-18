@@ -3,16 +3,21 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 import time
 import csv
 
-
+caps = DesiredCapabilities().CHROME
+caps['pageLoadStrategy'] = 'eager'
 options = Options()
 options.add_experimental_option('detach', True)
 options.add_experimental_option('excludeSwitches', ['enable-logging'])
 options.add_argument('--disable-blink-features=AutomationControlled')
 options.add_experimental_option('useAutomationExtension', False)
 options.add_experimental_option('excludeSwitches', ["enable-automation"])
+#options.add_argument('--headless')
+options.add_argument('--disable-gpu')
 
 letter = """Уважаемые рекрутеры
 
@@ -28,7 +33,7 @@ letter = """Уважаемые рекрутеры
 Полуяхтов Евгений Евгеньевич"""
 #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options, desired_capabilities=caps)
 
 print("OPENING MAIN PAGE...")
 driver.get("https://www.hh.ru")
@@ -53,16 +58,29 @@ with open("C:\\Users\\я\\Desktop\\myProjects\\scrapper\\data\\vacancies_list_al
     for link in links:
         driver.get(link['Ссылка'])
 
+        if counter >= 200:
+            exit()
+
         try:
+            try:
+                next_click = driver.find_element('xpath', "//a[@class='bloko-button bloko-button_kind-success bloko-button_scale-large bloko-button_stretched']")
             
-            next_click = driver.find_element('xpath', "//span[text()='Откликнуться']")
-            next_click.click()
-            time.sleep(3)
+            except NoSuchElementException:
+                print("ANOTHER DESIGN OF PAGE, JUST SKIPPING")
+                continue
+            
+            if next_click.text == 'Откликнуться':
+                next_click.click()
+                time.sleep(3)
+            
+            else:
+                continue
             
             try:
                 confirmation = driver.find_element('xpath', "//span[text()='Все равно откликнуться']")
                 confirmation.click()
                 time.sleep(3)
+            
             except Exception:
                 print("Нет опции подтвердить!")
                 continue
@@ -71,20 +89,21 @@ with open("C:\\Users\\я\\Desktop\\myProjects\\scrapper\\data\\vacancies_list_al
                 send_letter = driver.find_element('xpath', "//span[text()='Написать сопроводительное']")
                 send_letter.click()
                 time.sleep(3)
+            
             except Exception:
                 print("Нету кнопки Для сопроводительного")
                 continue
             
-            letter_input = driver.find_elements('xpath', "//textarea[@class = 'bloko-textarea bloko-textarea_noresize']")
+            letter_input = driver.find_elements('xpath', "//textarea[@class = 'bloko-textarea bloko-textarea_sized-rows']")
             letter_input[0].click()
             letter_input[0].send_keys(letter)
             time.sleep(1)
 
-            confirm = driver.find_element('xpath', "//span[text()='Откликнуться']")
+            confirm = driver.find_element('xpath', "//span[text()='Отправить']")
             confirm.click()
             time.sleep(2)
             counter += 1
-            print("RESUMES ACCEPTED" + str(counter))
+            print("RESUMES ACCEPTED - " + str(counter))
         except IndexError:
             print("Seems that this vacancy in archive!")
         
